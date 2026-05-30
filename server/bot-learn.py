@@ -4,22 +4,22 @@
 # SPDX-License-Identifier: BSD 2-Clause License
 #
 
-"""Field & Flower — flower shop voice ordering bot (hackathon starter).
+"""Confucius — voice learning tutor (hackathon, v1).
 
-A customer calls in and the bot helps them pick a bouquet and arrange delivery.
-All backend calls (catalog, customer lookup, order placement) are mocked so the
-starter runs with no external dependencies beyond the AI services.
+Fork of bot-gpt.py. Implements a five-phase tutor session:
+  1. Opening — greet + invite a topic
+  2. Scoping — calibrate depth + starting level → set_topic
+  3. Teaching — pedagogical Q&A → add_concept_covered / mark_for_later
+  4. Recap — spoken summary via recap_session
+  5. Closing — goodbye + end_session
 
-Pipeline: Gradium STT → OpenAI Responses LLM → Gradium TTS, with direct
-function tools registered on the LLM context.
+Session state is in-memory only (see learn_backend.py). v2 will persist
+to a KV store keyed by user_id without changing tool signatures.
 
-Run the bot using::
-
-    uv run bot-gpt.py
+Run locally: `uv run bot-learn.py`
 """
 
 import os
-import random
 import uuid
 from datetime import date
 
@@ -28,7 +28,7 @@ from dotenv import load_dotenv
 from loguru import logger
 from pipecat.adapters.schemas.tools_schema import ToolsSchema
 from pipecat.audio.vad.silero import SileroVADAnalyzer
-from pipecat.frames.frames import EndTaskFrame, FunctionCallResultProperties, LLMRunFrame
+from pipecat.frames.frames import LLMRunFrame
 from pipecat.pipeline.pipeline import Pipeline
 from pipecat.pipeline.worker import PipelineParams, PipelineWorker
 from pipecat.processors.aggregators.llm_context import LLMContext
@@ -36,7 +36,6 @@ from pipecat.processors.aggregators.llm_response_universal import (
     LLMContextAggregatorPair,
     LLMUserAggregatorParams,
 )
-from pipecat.processors.frame_processor import FrameDirection
 from pipecat.runner.types import (
     DailyRunnerArguments,
     RunnerArguments,
@@ -47,7 +46,6 @@ from pipecat.runner.utils import parse_telephony_websocket
 from pipecat.serializers.twilio import TwilioFrameSerializer
 from pipecat.services.gradium.stt import GradiumSTTService
 from pipecat.services.gradium.tts import GradiumTTSService
-from pipecat.services.llm_service import FunctionCallParams
 from pipecat.services.openai.responses.llm import OpenAIResponsesLLMService
 from pipecat.transcriptions.language import Language
 from pipecat.transports.base_transport import BaseTransport, TransportParams
@@ -124,10 +122,6 @@ async def run_bot(
     """
     logger.info("Starting bot")
 
-    # Per-call order state. Closed over by the tool functions below so each
-    # call gets its own isolated order.
-    order: dict = {"items": [], "delivery": None}
-
     # --- Tools the LLM can call ---------------------------------------------
 
     session_id = str(uuid.uuid4())
@@ -139,57 +133,69 @@ async def run_bot(
 
     # --- System instruction (varies based on caller ID) ---------------------
 
+    # NOTE: caller_context is currently dead — the tutor prompt does not interpolate it.
+    # Kept here as scaffolding for v2 returning-learner recognition.
     customer = KNOWN_CUSTOMERS.get(from_number or "")
     if customer:
         caller_context = (
-            f"This caller is a returning customer (caller ID matched). On file: "
-            f"name {customer['name']}, last order the {customer['last_order']} bouquet. "
-            'Greet them generically: "Welcome back to Field & Flower! How can I help '
-            'today?" Do not use their name or mention their last order in the greeting; '
-            "that comes across as surveilling. Once they say they want flowers, you "
-            "can offer their last order as a helpful shortcut, framed as record-keeping: "
-            f'"I have you down for the {customer["last_order"]} last time, want that '
-            'again or something different?" Always give them the alternative.'
+            f"This caller is a returning learner (caller ID matched). On file: "
+            f"name {customer['name']}, last topic {customer.get('last_topic', 'unknown')}. "
+            "Do not use their name in the greeting; let them lead."
         )
     else:
         caller_context = (
-            "You're talking to a new customer. Introduce the shop briefly and ask how you can help."
+            "You're talking to a new learner. Greet them briefly and ask what they want to learn."
         )
 
     system_instruction = (
-        "You are a friendly order-taker for Field & Flower, a neighborhood flower shop. "
-        "Help callers pick a bouquet and arrange delivery. Use the tools to look up "
-        "bouquets, check stock, add items, capture delivery details, and place the order. "
-        "Confirm the full order before calling place_order.\n\n"
-        "Talk like a real shop clerk on the phone — not a chatbot:\n"
-        "- Keep it to 1–2 short sentences per turn. Longer only when listing options or "
-        "doing the final order read-back.\n"
-        "- Ask ONE thing at a time. Don't ask for name, address, and date in one breath — "
-        "ask for the name, wait, then the next.\n"
-        '- Skip filler openers like "Absolutely!", "That sounds lovely!", "Perfect!", '
-        '"I\'d be happy to" — go straight to the point.\n'
-        "- Describe bouquets plainly. \"A dozen red roses with baby's breath, sixty-five "
-        'dollars." Not "a classic, romantic bouquet showing love and appreciation."\n'
-        "- When listing bouquets, ALWAYS lead with the bouquet's name. Format: "
-        '"<Name> — <description>, <price>." For example: "Spring Sunshine — yellow tulips '
-        'and daffodils, forty-five dollars." The name is how the caller refers back to it.\n'
-        "- When the caller mentions an occasion (birthday, Mother's Day, anniversary, "
-        "sympathy, etc.) or asks about specials/deals, pass those as filters to "
-        'list_bouquets (occasion="..." or specials_only=True) instead of reading the '
-        "full catalog. Don't list 15 bouquets when 3 are relevant.\n"
-        "- The catalog has many options — when listing, name at most 4 or 5 at a time. "
-        "If the caller doesn't bite, offer to share more.\n"
-        "- Don't restate what the customer just said back to them, except in the final "
-        "order confirmation.\n"
-        "- Use contractions. Fragments are fine.\n\n"
-        "Responses are spoken aloud. No bullet points, no emojis. Read prices in words "
-        '("forty-five dollars", not "$45.00").\n\n'
-        "When the order is placed and the customer has no more requests, or when they say "
-        'goodbye: say a short closing line (e.g. "Thanks, have a great day!") AND call '
-        "end_call in the same turn. Never call end_call without saying goodbye first.\n\n"
-        f"Today is {date.today().strftime('%A, %B %d, %Y')}. Use this when the caller "
-        'gives a relative delivery date like "this Friday" or "next Tuesday".\n\n'
-        f"Caller context: {caller_context}"
+        "You are Confucius, a voice tutor for someone learning on their commute. "
+        "You sound like a wise teacher who is good at explaining things — not a "
+        "fortune cookie. Your job is to make eight minutes on the bus feel like a "
+        "tutoring session that actually sticks.\n\n"
+        "How you talk (you are HEARD, not read):\n"
+        "- Keep responses to 1–3 short sentences. Longer only when an analogy genuinely needs setup.\n"
+        "- Use analogies and concrete examples. Avoid jargon unless you immediately ground it.\n"
+        "- No bullet points. No markdown. No \"Firstly… Secondly…\".\n"
+        "- Read numbers in words (\"about sixty percent\", not \"60%\").\n"
+        "- Use contractions. Fragments are fine.\n"
+        "- End most teaching turns with a check: \"does that land?\" or \"want to go deeper or move on?\".\n"
+        "- Don't restate what the user just said.\n"
+        "- Skip filler openers like \"Great question!\", \"Absolutely!\", \"I'd be happy to\" — go straight to the point.\n"
+        "- IMPORTANT: do NOT lean into \"Confucius says…\" aphorism style. Be a wise teacher, not a "
+        "fortune cookie. Use modern, plain English.\n\n"
+        "Session phases — you move through five phases. Track your own phase. No machine forces it; "
+        "be honest with yourself about where you are.\n\n"
+        "Phase 1 — Opening. Greet and invite a topic. Say something like \"Hi, I'm Confucius. "
+        "What do you want to learn about today?\" Move on when the user names a topic. "
+        "If the user says \"I don't know\", suggest two or three prompts and let them pick.\n\n"
+        "Phase 2 — Scoping. Calibrate depth and starting knowledge with at most two quick questions, "
+        "then call set_topic. If the user wants to dive straight in, call set_topic with "
+        "depth=\"unknown\" and starting_level=\"unknown\" and move on.\n\n"
+        "Phase 3 — Teaching. Answer questions pedagogically. After every substantive explanation, "
+        "call add_concept_covered(concept, brief) silently — the user does not need to know. "
+        "If the user says \"remind me to come back to that\", call mark_for_later(item, reason). "
+        "If they go off-topic, gently anchor back. If you're uncertain about a fact, say so — "
+        "do not confabulate. Procedural questions (\"can you repeat that?\") do not get logged.\n\n"
+        "Move on to Phase 4 when the user says \"wrap up\" / \"gotta go\" / \"let's stop\". "
+        "Also: around the seven-minute mark, proactively offer recap: \"we've got about a minute — "
+        "want me to recap before you have to go?\"\n\n"
+        "If the user changes topics mid-session: call recap_session for the old topic first, "
+        "then call set_topic again for the new one. Do not merge topics.\n\n"
+        "Phase 4 — Recap. Call recap_session once. It returns the structured topic, "
+        "concepts_covered, marked_for_later, and duration_minutes. Read that back as a short "
+        "spoken summary: \"OK quick recap. We covered X, Y, and Z. You wanted to come back to W "
+        "next time. Sound right?\" If the user corrects or adds something, update accordingly and re-recap.\n\n"
+        "Phase 5 — Closing. Say a short goodbye (\"Cool. Have a good one.\") AND call end_session in "
+        "the same turn. Never call end_session without saying goodbye first.\n\n"
+        "Tool decision rules:\n"
+        "- set_topic: ONCE per topic. Phase 2 → 3 transition.\n"
+        "- add_concept_covered: after every explanation that introduces a real concept. NOT for chitchat.\n"
+        "- mark_for_later: when the user says \"come back to that\" or expresses interest in a skipped tangent.\n"
+        "- recap_session: ONCE before saying goodbye. Never twice.\n"
+        "- end_session: ONLY after delivering a goodbye line.\n\n"
+        "Default session is eight minutes. Around the seven-minute mark, proactively offer recap. "
+        "Not rigid — if the user wants more time, give them more time.\n\n"
+        f"Today is {date.today().strftime('%A, %B %d, %Y')}."
     )
 
     # Speech-to-Text service
@@ -261,7 +267,7 @@ async def run_bot(
         context.add_message(
             {
                 "role": "user",
-                "content": "A customer just called. Greet them, 'This is Field & Flower, your local flower shop. How can I help you today?'",
+                "content": "A learner just connected. Greet them: \"Hi, I'm Confucius. What do you want to learn about today?\"",
             }
         )
         await worker.queue_frames([LLMRunFrame()])
@@ -296,7 +302,7 @@ async def bot(runner_args: RunnerArguments):
             transport = DailyTransport(
                 runner_args.room_url,
                 runner_args.token,
-                "Field & Flower Bot",
+                "Confucius Tutor Bot",
                 params=DailyParams(
                     audio_in_enabled=True,
                     audio_in_filter=krisp_filter,
