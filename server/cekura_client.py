@@ -29,6 +29,21 @@ def _api_key() -> str:
     return os.environ.get("CEKURA_API_KEY", "")
 
 
+def _agent_id() -> int | None:
+    """Read CEKURA_AGENT_ID lazily. Cekura's /observe endpoint requires an
+    integer agent ID (the numeric ID shown in the Cekura dashboard's Agents
+    list), not a string name. Returns None if unset or malformed; callers
+    should treat that as "skip send" or "unknown agent" depending on context.
+    """
+    raw = os.environ.get("CEKURA_AGENT_ID", "").strip()
+    if not raw:
+        return None
+    try:
+        return int(raw)
+    except ValueError:
+        return None
+
+
 def _headers() -> dict:
     return {
         "Content-Type": "application/json",
@@ -67,7 +82,7 @@ def build_payload(state: "SessionState") -> dict:
         })
 
     return {
-        "agent": "learn-bot",
+        "agent": _agent_id(),
         "call_id": state.session_id,
         "voice_recording_url": "",
         "transcript_type": "custom",
