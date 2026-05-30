@@ -171,11 +171,14 @@ def make_tools(session_id: str) -> list:
         await params.result_callback(payload)
 
     async def end_session(params: FunctionCallParams) -> None:
-        """Close the call cleanly. Phase 5. Same pattern as flower-bot's end_call.
-
-        `run_llm=False` prevents the LLM from generating a follow-up response after
-        this function returns — the goodbye should already be in flight.
-        """
+        """End the session. Only call this AFTER you have said goodbye to the
+        learner in the same turn. The pipeline will flush any queued speech and
+        then hang up."""
+        # NOTE: do NOT mention `run_llm` in the docstring above — Pipecat exposes
+        # docstrings to the LLM and the model will mistake `run_llm` for a tool
+        # parameter and call end_session(run_llm=False), causing a TypeError.
+        # The run_llm=False below is for FunctionCallResultProperties; it
+        # prevents an LLM follow-up response after this tool returns.
         import cekura_client  # function-level to avoid module-load-time circular import concern
         state = get_or_create_session(session_id)
         now = datetime.now(timezone.utc)
