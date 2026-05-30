@@ -21,14 +21,21 @@ Run locally: `uv run bot-learn.py`
 
 import os
 import uuid
-from datetime import date
+from datetime import date, datetime, timezone
 
 import aiohttp
 from dotenv import load_dotenv
 from loguru import logger
 from pipecat.adapters.schemas.tools_schema import ToolsSchema
 from pipecat.audio.vad.silero import SileroVADAnalyzer
-from pipecat.frames.frames import LLMRunFrame
+from pipecat.frames.frames import (
+    Frame,
+    LLMFullResponseEndFrame,
+    LLMFullResponseStartFrame,
+    LLMRunFrame,
+    LLMTextFrame,
+    TranscriptionFrame,
+)
 from pipecat.pipeline.pipeline import Pipeline
 from pipecat.pipeline.worker import PipelineParams, PipelineWorker
 from pipecat.processors.aggregators.llm_context import LLMContext
@@ -36,6 +43,7 @@ from pipecat.processors.aggregators.llm_response_universal import (
     LLMContextAggregatorPair,
     LLMUserAggregatorParams,
 )
+from pipecat.processors.frame_processor import FrameDirection, FrameProcessor
 from pipecat.runner.types import (
     DailyRunnerArguments,
     RunnerArguments,
@@ -56,9 +64,76 @@ from pipecat.transports.websocket.fastapi import FastAPIWebsocketParams, FastAPI
 from pipecat.turns.user_turn_strategies import FilterIncompleteUserTurnStrategies
 from pipecat.workers.runner import WorkerRunner
 
-from learn_backend import make_tools, get_or_create_session
+from learn_backend import TranscriptTurn, get_or_create_session, make_tools
 
 KNOWN_CUSTOMERS: dict = {}  # placeholder for v2 returning-learner recognition
+
+
+# --- Transcript capture (Pipecat 1.3.0 has no TranscriptProcessor) ----------
+# A pair of these is inserted into the pipeline to observe finalized user
+# transcriptions (post-STT) and aggregated assistant text (between
+# LLMFullResponseStartFrame and LLMFullResponseEndFrame, post-LLM). They are
+# pure observers: every frame is passed through unchanged.
+
+
+class _UserTranscriptCapture(FrameProcessor):
+    """Append finalized TranscriptionFrames to SessionState.transcript."""
+
+    def __init__(self, session_id: str):
+        super().__init__()
+        self._session_id = session_id
+
+    async def process_frame(self, frame: Frame, direction: FrameDirection):
+        await super().process_frame(frame, direction)
+        if (
+            isinstance(frame, TranscriptionFrame)
+            and direction == FrameDirection.DOWNSTREAM
+            and getattr(frame, "finalized", True)
+            and (frame.text or "").strip()
+        ):
+            state = get_or_create_session(self._session_id)
+            state.transcript.append(
+                TranscriptTurn(
+                    role="user",
+                    content=frame.text.strip(),
+                    timestamp=datetime.now(timezone.utc),
+                )
+            )
+        await self.push_frame(frame, direction)
+
+
+class _AssistantTranscriptCapture(FrameProcessor):
+    """Aggregate LLMTextFrames between LLMFullResponse{Start,End} into one turn."""
+
+    def __init__(self, session_id: str):
+        super().__init__()
+        self._session_id = session_id
+        self._buffer: list[str] = []
+        self._capturing = False
+
+    async def process_frame(self, frame: Frame, direction: FrameDirection):
+        await super().process_frame(frame, direction)
+        if direction == FrameDirection.DOWNSTREAM:
+            if isinstance(frame, LLMFullResponseStartFrame):
+                self._buffer = []
+                self._capturing = True
+            elif isinstance(frame, LLMTextFrame) and self._capturing:
+                if frame.text:
+                    self._buffer.append(frame.text)
+            elif isinstance(frame, LLMFullResponseEndFrame) and self._capturing:
+                self._capturing = False
+                content = "".join(self._buffer).strip()
+                self._buffer = []
+                if content:
+                    state = get_or_create_session(self._session_id)
+                    state.transcript.append(
+                        TranscriptTurn(
+                            role="assistant",
+                            content=content,
+                            timestamp=datetime.now(timezone.utc),
+                        )
+                    )
+        await self.push_frame(frame, direction)
 
 load_dotenv(override=True)
 
@@ -235,13 +310,20 @@ async def run_bot(
         ),
     )
 
+    # Transcript capture taps — populate SessionState.transcript so
+    # cekura_client.build_payload sees a real turn list at end_session time.
+    user_transcript_capture = _UserTranscriptCapture(session_id)
+    assistant_transcript_capture = _AssistantTranscriptCapture(session_id)
+
     # Pipeline - assembled from reusable components
     pipeline = Pipeline(
         [
             transport.input(),
             stt,
+            user_transcript_capture,
             user_aggregator,
             llm,
+            assistant_transcript_capture,
             tts,
             transport.output(),
             assistant_aggregator,
