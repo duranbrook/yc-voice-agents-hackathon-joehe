@@ -276,6 +276,13 @@ async def run_bot(
         f"Today is {date.today().strftime('%A, %B %d, %Y')}."
     )
 
+    # Append optional domain context from llm_context.md (transcription corrections,
+    # glossary, etc.) — additive only; safe to edit/reload without touching code.
+    _ctx_path = os.path.join(os.path.dirname(__file__), "llm_context.md")
+    if os.path.exists(_ctx_path):
+        with open(_ctx_path) as _ctx_file:
+            system_instruction = system_instruction + "\n\n" + _ctx_file.read()
+
     # Speech-to-Text service
     stt = GradiumSTTService(
         api_key=os.environ["GRADIUM_API_KEY"],

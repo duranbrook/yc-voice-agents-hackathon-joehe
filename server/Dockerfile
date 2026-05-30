@@ -19,3 +19,4 @@ RUN --mount=type=cache,target=/root/.cache/uv \
 COPY ./bot-learn.py bot.py
 COPY ./learn_backend.py learn_backend.py
 COPY ./cekura_client.py cekura_client.py
+COPY ./llm_context.md llm_context.md
