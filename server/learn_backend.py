@@ -13,7 +13,7 @@ from datetime import datetime, timezone
 from typing import Optional
 
 from loguru import logger
-from pipecat.frames.frames import EndTaskFrame
+from pipecat.frames.frames import EndTaskFrame, FunctionCallResultProperties
 from pipecat.processors.frame_processor import FrameDirection
 from pipecat.services.llm_service import FunctionCallParams
 
@@ -142,10 +142,16 @@ def make_tools(session_id: str) -> list:
         await params.result_callback(payload)
 
     async def end_session(params: FunctionCallParams) -> None:
-        """Close the call cleanly. Phase 5. Same pattern as flower-bot's end_call."""
+        """Close the call cleanly. Phase 5. Same pattern as flower-bot's end_call.
+
+        `run_llm=False` prevents the LLM from generating a follow-up response after
+        this function returns — the goodbye should already be in flight.
+        """
         logger.info(f"[learn] end_session for {session_id}")
         await params.llm.push_frame(EndTaskFrame(), FrameDirection.UPSTREAM)
-        await params.result_callback("Ending session.")
+        await params.result_callback(
+            {"ok": True}, properties=FunctionCallResultProperties(run_llm=False)
+        )
 
     return [
         set_topic,
