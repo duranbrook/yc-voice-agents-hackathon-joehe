@@ -81,33 +81,41 @@ def build_payload(state: "SessionState") -> dict:
             "duration_seconds": c_dur,
         })
 
+    # Cekura's documented `transcript_type: "custom"` is rejected by the live API
+    # ("custom is not a valid choice"). The agent is registered with provider
+    # "pipecat" in the Cekura dashboard, so use that. The docs also show
+    # transcript_json as a flat list of turns (not a nested object with metadata),
+    # so we send a flat list. Metadata fields we want preserved are smuggled
+    # into the first synthetic "system" turn until Cekura exposes a custom-fields
+    # path. If Cekura's pipecat parser rejects extra-shaped turns, the worst
+    # outcome is the metadata is dropped — the transcript itself is still ingested.
+    turns_payload = [
+        {
+            "role": t.role,
+            "content": t.content,
+            "timestamp": _iso(t.timestamp),
+        }
+        for t in state.transcript
+    ]
+    metadata = {
+        "user_id": state.user_id,
+        "topic": state.topic,
+        "depth": state.depth,
+        "starting_level": state.starting_level,
+        "session_started_at": _iso(state.started_at),
+        "session_ended_at": _iso(state.ended_at),
+        "session_duration_seconds": duration_seconds,
+        "concepts": concepts,
+        "marked_for_later": [asdict(m) for m in state.marked_for_later],
+        "phase_reached": state.phase_reached,
+    }
     return {
         "agent": _agent_id(),
         "call_id": state.session_id,
         "voice_recording_url": "",
-        "transcript_type": "custom",
-        "transcript_json": {
-            "turns": [
-                {
-                    "role": t.role,
-                    "content": t.content,
-                    "timestamp": _iso(t.timestamp),
-                }
-                for t in state.transcript
-            ],
-            "metadata": {
-                "user_id": state.user_id,
-                "topic": state.topic,
-                "depth": state.depth,
-                "starting_level": state.starting_level,
-                "session_started_at": _iso(state.started_at),
-                "session_ended_at": _iso(state.ended_at),
-                "session_duration_seconds": duration_seconds,
-                "concepts": concepts,
-                "marked_for_later": [asdict(m) for m in state.marked_for_later],
-                "phase_reached": state.phase_reached,
-            },
-        },
+        "transcript_type": "pipecat",
+        "transcript_json": turns_payload,
+        "metadata": metadata,
         "call_ended_reason": state.end_reason or "unknown",
     }
 
