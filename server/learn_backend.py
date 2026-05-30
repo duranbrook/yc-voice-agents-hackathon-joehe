@@ -8,6 +8,7 @@ user_id; the tool signatures will not change.
 
 from __future__ import annotations
 
+import asyncio
 from dataclasses import dataclass, field, asdict
 from datetime import datetime, timezone
 from typing import Optional
@@ -105,6 +106,7 @@ def make_tools(session_id: str) -> list:
         state.topic = topic
         state.depth = depth
         state.starting_level = starting_level
+        state.phase_reached = "teaching"
         logger.info(f"[learn] set_topic: {topic} ({depth}, {starting_level})")
         await params.result_callback(
             f"Topic set: {topic} ({depth}, {starting_level}). Begin teaching."
@@ -122,7 +124,15 @@ def make_tools(session_id: str) -> list:
             brief: 1-sentence summary of what was explained.
         """
         state = get_or_create_session(session_id)
-        state.concepts_covered.append(ConceptCovered(concept=concept, brief=brief))
+        now = datetime.now(timezone.utc)
+        # Close prior concept if still open
+        if state.concepts_covered and state.concepts_covered[-1].ended_at is None:
+            state.concepts_covered[-1].ended_at = now
+        state.concepts_covered.append(ConceptCovered(
+            concept=concept,
+            brief=brief,
+            started_at=now,
+        ))
         logger.info(f"[learn] add_concept_covered: {concept}")
         await params.result_callback("Logged.")
 
@@ -145,6 +155,10 @@ def make_tools(session_id: str) -> list:
     async def recap_session(params: FunctionCallParams) -> None:
         """Return structured session state for the LLM to verbalize. Phase 3 → 4."""
         state = get_or_create_session(session_id)
+        state.phase_reached = "recap"
+        # Close current concept if still open
+        if state.concepts_covered and state.concepts_covered[-1].ended_at is None:
+            state.concepts_covered[-1].ended_at = datetime.now(timezone.utc)
         payload = {
             "topic": state.topic,
             "depth": state.depth,
@@ -162,6 +176,17 @@ def make_tools(session_id: str) -> list:
         `run_llm=False` prevents the LLM from generating a follow-up response after
         this function returns — the goodbye should already be in flight.
         """
+        import cekura_client  # function-level to avoid module-load-time circular import concern
+        state = get_or_create_session(session_id)
+        now = datetime.now(timezone.utc)
+        state.phase_reached = "closing"
+        state.end_reason = state.end_reason or "user_goodbye"
+        state.ended_at = now
+        if state.concepts_covered and state.concepts_covered[-1].ended_at is None:
+            state.concepts_covered[-1].ended_at = now
+        if not state.sent_to_cekura:
+            state.sent_to_cekura = True
+            asyncio.create_task(cekura_client.send_session(state))
         logger.info(f"[learn] end_session for {session_id}")
         await params.llm.push_frame(EndTaskFrame(), FrameDirection.UPSTREAM)
         await params.result_callback(
