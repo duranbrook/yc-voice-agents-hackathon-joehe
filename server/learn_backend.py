@@ -25,6 +25,8 @@ from pipecat.services.llm_service import FunctionCallParams
 class ConceptCovered:
     concept: str
     brief: str
+    started_at: datetime
+    ended_at: datetime | None = None
 
 
 @dataclass
@@ -34,14 +36,27 @@ class MarkedForLater:
 
 
 @dataclass
+class TranscriptTurn:
+    role: str               # "user" | "assistant"
+    content: str
+    timestamp: datetime
+
+
+@dataclass
 class SessionState:
     session_id: str
     started_at: datetime
+    user_id: str = "default_user"
+    ended_at: datetime | None = None
     topic: Optional[str] = None
     depth: Optional[str] = None  # "overview" | "deep" | "unknown"
     starting_level: Optional[str] = None  # "novice" | "some_background" | "expert" | "unknown"
     concepts_covered: list[ConceptCovered] = field(default_factory=list)
     marked_for_later: list[MarkedForLater] = field(default_factory=list)
+    transcript: list[TranscriptTurn] = field(default_factory=list)
+    phase_reached: str = "opening"           # opening | scoping | teaching | recap | closing
+    end_reason: str | None = None            # "user_goodbye" | "client_disconnect" | "error"
+    sent_to_cekura: bool = False             # idempotency latch
 
 
 # Process-local store. Keyed by an opaque session_id we generate per run_bot call.
