@@ -18,3 +18,4 @@ RUN --mount=type=cache,target=/root/.cache/uv \
 # Copy the application code
 COPY ./bot-learn.py bot.py
 COPY ./learn_backend.py learn_backend.py
+COPY ./cekura_client.py cekura_client.py
