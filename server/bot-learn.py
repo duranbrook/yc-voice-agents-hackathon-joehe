@@ -281,7 +281,11 @@ async def run_bot(
     _ctx_path = os.path.join(os.path.dirname(__file__), "llm_context.md")
     if os.path.exists(_ctx_path):
         with open(_ctx_path) as _ctx_file:
-            system_instruction = system_instruction + "\n\n" + _ctx_file.read()
+            _ctx_text = _ctx_file.read()
+        system_instruction = system_instruction + "\n\n" + _ctx_text
+        logger.info(f"[ctx] appended {len(_ctx_text)} chars from {_ctx_path}")
+    else:
+        logger.warning(f"[ctx] llm_context.md NOT FOUND at {_ctx_path} — running with base prompt only")
 
     # Speech-to-Text service
     stt = GradiumSTTService(
