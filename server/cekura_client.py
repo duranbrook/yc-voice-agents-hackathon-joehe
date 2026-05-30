@@ -21,14 +21,19 @@ if TYPE_CHECKING:
 
 
 CEKURA_URL = "https://api.cekura.ai/observability/v1/observe/"
-CEKURA_API_KEY = os.environ.get("CEKURA_API_KEY", "")
 HTTP_TIMEOUT_SECONDS = 5.0
+
+
+def _api_key() -> str:
+    """Read CEKURA_API_KEY lazily so .env loaded after import still works."""
+    return os.environ.get("CEKURA_API_KEY", "")
 
 
 def _headers() -> dict:
     return {
         "Content-Type": "application/json",
-        "X-CEKURA-API-KEY": CEKURA_API_KEY,
+        "X-CEKURA-API-KEY": _api_key(),
+        "User-Agent": "learn-bot-cekura-client/1.0",
     }
 
 
@@ -94,13 +99,13 @@ def build_payload(state: "SessionState") -> dict:
 
 async def send_session(state: "SessionState") -> None:
     """POST a completed session to Cekura. Never raises."""
-    if not CEKURA_API_KEY:
+    if not _api_key():
         logger.warning("[cekura] CEKURA_API_KEY not set — skipping send")
         return
     try:
         payload = build_payload(state)
-    except (TypeError, ValueError) as e:
-        logger.error(f"[cekura] payload build failed for {state.session_id}: {e}")
+    except Exception as e:
+        logger.error(f"[cekura] payload build failed for {state.session_id}: {e!r}")
         return
     try:
         timeout = aiohttp.ClientTimeout(total=HTTP_TIMEOUT_SECONDS)
@@ -118,3 +123,5 @@ async def send_session(state: "SessionState") -> None:
         logger.warning(f"[cekura] timeout for {state.session_id}")
     except aiohttp.ClientError as e:
         logger.warning(f"[cekura] connection error: {e}")
+    except Exception as e:
+        logger.error(f"[cekura] unexpected error for {state.session_id}: {e!r}")
