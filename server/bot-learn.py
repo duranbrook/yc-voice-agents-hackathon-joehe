@@ -359,6 +359,16 @@ async def run_bot(
 
     @transport.event_handler("on_client_disconnected")
     async def on_client_disconnected(transport, client):
+        import asyncio
+        import cekura_client
+        state = get_or_create_session(session_id)
+        if not state.sent_to_cekura:
+            state.sent_to_cekura = True
+            state.end_reason = state.end_reason or "client_disconnect"
+            state.ended_at = state.ended_at or datetime.now(timezone.utc)
+            if state.concepts_covered and state.concepts_covered[-1].ended_at is None:
+                state.concepts_covered[-1].ended_at = state.ended_at
+            asyncio.create_task(cekura_client.send_session(state))
         logger.info("Client disconnected")
         await worker.cancel()
 
