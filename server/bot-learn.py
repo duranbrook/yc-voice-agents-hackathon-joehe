@@ -20,6 +20,7 @@ Run the bot using::
 
 import os
 import random
+import uuid
 from datetime import date
 
 import aiohttp
@@ -57,7 +58,9 @@ from pipecat.transports.websocket.fastapi import FastAPIWebsocketParams, FastAPI
 from pipecat.turns.user_turn_strategies import FilterIncompleteUserTurnStrategies
 from pipecat.workers.runner import WorkerRunner
 
-from mock_backend import BOUQUETS, KNOWN_CUSTOMERS
+from learn_backend import make_tools, get_or_create_session
+
+KNOWN_CUSTOMERS: dict = {}  # placeholder for v2 returning-learner recognition
 
 load_dotenv(override=True)
 
@@ -127,171 +130,11 @@ async def run_bot(
 
     # --- Tools the LLM can call ---------------------------------------------
 
-    async def list_bouquets(
-        params: FunctionCallParams,
-        occasion: str | None = None,
-        specials_only: bool = False,
-    ) -> None:
-        """List bouquets available today. Optionally filter by occasion or by
-        what's currently on special.
-
-        Use this when the caller asks what's available, mentions a specific
-        occasion ("it's for my mom's birthday", "for Valentine's Day", "for a
-        funeral"), or asks about specials/deals. Sold-out bouquets are
-        automatically excluded from results.
-
-        Args:
-            occasion: Lowercase occasion to filter by. Common values:
-                "birthday", "anniversary", "valentine's day", "mother's day",
-                "sympathy", "wedding", "graduation", "thank you", "get well",
-                "new baby", "housewarming", "christmas", "easter", "just
-                because". Pass the canonical short form ("birthday", not "mom's
-                birthday"). Omit to return the full catalog.
-            specials_only: If True, only return bouquets currently on special.
-        """
-        results = []
-        for name, info in BOUQUETS.items():
-            if not info["in_stock"]:
-                continue
-            if specials_only and not info.get("on_special", False):
-                continue
-            if occasion is not None:
-                occ = occasion.strip().lower()
-                tags = [o.lower() for o in info.get("occasions", [])]
-                if not any(occ in tag or tag in occ for tag in tags):
-                    continue
-            results.append({"name": name, **info})
-
-        if not results and (occasion is not None or specials_only):
-            await params.result_callback(
-                {
-                    "bouquets": [],
-                    "note": (
-                        "No bouquets match those filters. Tell the caller you don't have "
-                        "anything specifically for that, and offer to browse the full "
-                        "catalog or try a different angle."
-                    ),
-                }
-            )
-            return
-
-        await params.result_callback({"bouquets": results})
-
-    async def check_availability(params: FunctionCallParams, bouquet_name: str) -> None:
-        """Check whether a specific bouquet is in stock today.
-
-        Args:
-            bouquet_name: The name of the bouquet to check, lowercase.
-        """
-        item = BOUQUETS.get(bouquet_name.lower())
-        if not item:
-            await params.result_callback(
-                {"available": False, "reason": f"We don't carry a bouquet called '{bouquet_name}'."}
-            )
-            return
-        if not item["in_stock"]:
-            await params.result_callback(
-                {"available": False, "reason": f"{bouquet_name} is sold out today."}
-            )
-            return
-        await params.result_callback({"available": True, "price": item["price"]})
-
-    async def add_to_order(
-        params: FunctionCallParams, bouquet_name: str, quantity: int = 1
-    ) -> None:
-        """Add a bouquet to the customer's order. Only call this after the
-        customer has confirmed they want this bouquet.
-
-        Args:
-            bouquet_name: The name of the bouquet to add, lowercase.
-            quantity: How many of this bouquet to add. Defaults to 1.
-        """
-        item = BOUQUETS.get(bouquet_name.lower())
-        if not item:
-            await params.result_callback(
-                {"ok": False, "reason": f"We don't carry a bouquet called '{bouquet_name}'."}
-            )
-            return
-        if not item["in_stock"]:
-            await params.result_callback(
-                {"ok": False, "reason": f"{bouquet_name} is sold out today."}
-            )
-            return
-        order["items"].append(
-            {"bouquet": bouquet_name.lower(), "quantity": quantity, "price": item["price"]}
-        )
-        await params.result_callback({"ok": True, "items": order["items"]})
-
-    async def get_order_summary(params: FunctionCallParams) -> None:
-        """Read back the current order: items, quantities, and running total."""
-        total = sum(line["price"] * line["quantity"] for line in order["items"])
-        await params.result_callback(
-            {"items": order["items"], "total": round(total, 2), "delivery": order["delivery"]}
-        )
-
-    async def set_delivery_details(
-        params: FunctionCallParams,
-        recipient_name: str,
-        address: str,
-        delivery_date: str,
-    ) -> None:
-        """Capture delivery details for the order.
-
-        Args:
-            recipient_name: Name of the person receiving the flowers.
-            address: Delivery street address.
-            delivery_date: Requested delivery date, in the customer's own words
-                (e.g. "Friday", "May 20th"). No parsing required.
-        """
-        order["delivery"] = {
-            "recipient_name": recipient_name,
-            "address": address,
-            "delivery_date": delivery_date,
-        }
-        await params.result_callback({"ok": True, "delivery": order["delivery"]})
-
-    async def place_order(params: FunctionCallParams) -> None:
-        """Finalize the order. Only call this after the customer has confirmed
-        the items AND delivery details."""
-        if not order["items"]:
-            await params.result_callback({"ok": False, "reason": "No items in the order yet."})
-            return
-        if not order["delivery"]:
-            await params.result_callback({"ok": False, "reason": "Missing delivery details."})
-            return
-        total = sum(line["price"] * line["quantity"] for line in order["items"])
-        confirmation = f"FLW-{random.randint(100000, 999999)}"
-        logger.info(f"Order placed: {confirmation} total=${total:.2f} order={order}")
-        await params.result_callback(
-            {
-                "ok": True,
-                "confirmation_number": confirmation,
-                "total": round(total, 2),
-                "eta": "within 2 business days",
-            }
-        )
-
-    async def end_call(params: FunctionCallParams) -> None:
-        """End the call. Only call this AFTER you have said goodbye to the
-        customer in the same turn. The pipeline will flush any queued speech
-        and then hang up."""
-        logger.info("end_call invoked — pushing EndTaskFrame upstream")
-        await params.llm.push_frame(EndTaskFrame(), FrameDirection.UPSTREAM)
-        # run_llm=False prevents the LLM from generating a follow-up response
-        # after this function returns — the goodbye should already be in flight.
-        await params.result_callback(
-            {"ok": True}, properties=FunctionCallResultProperties(run_llm=False)
-        )
-
-    tool_functions = [
-        list_bouquets,
-        check_availability,
-        add_to_order,
-        get_order_summary,
-        set_delivery_details,
-        place_order,
-        end_call,
-    ]
+    session_id = str(uuid.uuid4())
+    tool_functions = make_tools(session_id)
+    # Ensure SessionState row exists from the start so recap_session works even
+    # if the LLM hallucinates calling it pre-Phase-2.
+    get_or_create_session(session_id)
     tools = ToolsSchema(standard_tools=tool_functions)
 
     # --- System instruction (varies based on caller ID) ---------------------
