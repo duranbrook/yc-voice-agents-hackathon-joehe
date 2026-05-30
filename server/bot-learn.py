@@ -85,20 +85,22 @@ class _UserTranscriptCapture(FrameProcessor):
 
     async def process_frame(self, frame: Frame, direction: FrameDirection):
         await super().process_frame(frame, direction)
-        if (
-            isinstance(frame, TranscriptionFrame)
-            and direction == FrameDirection.DOWNSTREAM
-            and getattr(frame, "finalized", True)
-            and (frame.text or "").strip()
-        ):
-            state = get_or_create_session(self._session_id)
-            state.transcript.append(
-                TranscriptTurn(
-                    role="user",
-                    content=frame.text.strip(),
-                    timestamp=datetime.now(timezone.utc),
+        try:
+            if (
+                isinstance(frame, TranscriptionFrame)
+                and direction == FrameDirection.DOWNSTREAM
+                and (frame.text or "").strip()
+            ):
+                state = get_or_create_session(self._session_id)
+                state.transcript.append(
+                    TranscriptTurn(
+                        role="user",
+                        content=frame.text.strip(),
+                        timestamp=datetime.now(timezone.utc),
+                    )
                 )
-            )
+        except Exception as e:
+            logger.warning(f"[transcript-capture] user capture failed: {e!r}")
         await self.push_frame(frame, direction)
 
 
@@ -113,26 +115,29 @@ class _AssistantTranscriptCapture(FrameProcessor):
 
     async def process_frame(self, frame: Frame, direction: FrameDirection):
         await super().process_frame(frame, direction)
-        if direction == FrameDirection.DOWNSTREAM:
-            if isinstance(frame, LLMFullResponseStartFrame):
-                self._buffer = []
-                self._capturing = True
-            elif isinstance(frame, LLMTextFrame) and self._capturing:
-                if frame.text:
-                    self._buffer.append(frame.text)
-            elif isinstance(frame, LLMFullResponseEndFrame) and self._capturing:
-                self._capturing = False
-                content = "".join(self._buffer).strip()
-                self._buffer = []
-                if content:
-                    state = get_or_create_session(self._session_id)
-                    state.transcript.append(
-                        TranscriptTurn(
-                            role="assistant",
-                            content=content,
-                            timestamp=datetime.now(timezone.utc),
+        try:
+            if direction == FrameDirection.DOWNSTREAM:
+                if isinstance(frame, LLMFullResponseStartFrame):
+                    self._buffer = []
+                    self._capturing = True
+                elif isinstance(frame, LLMTextFrame) and self._capturing:
+                    if frame.text and not getattr(frame, "skip_tts", False):
+                        self._buffer.append(frame.text)
+                elif isinstance(frame, LLMFullResponseEndFrame) and self._capturing:
+                    self._capturing = False
+                    content = "".join(self._buffer).strip()
+                    self._buffer = []
+                    if content:
+                        state = get_or_create_session(self._session_id)
+                        state.transcript.append(
+                            TranscriptTurn(
+                                role="assistant",
+                                content=content,
+                                timestamp=datetime.now(timezone.utc),
+                            )
                         )
-                    )
+        except Exception as e:
+            logger.warning(f"[transcript-capture] assistant capture failed: {e!r}")
         await self.push_frame(frame, direction)
 
 load_dotenv(override=True)
