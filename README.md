@@ -18,18 +18,6 @@ Under the hood it's a Pipecat voice agent with a 5-phase session state machine �
 
 **🎬 [Watch the 60-second demo](https://drive.google.com/file/d/150KIve1JKUN_98mDb12p2A8shQh69b1P/view?usp=drive_link)**
 
-Script + storyboard: [`docs/plans/2026-05-30-confucius-demo-video-script.html`](docs/plans/2026-05-30-confucius-demo-video-script.html)
-Pitch deck: [`docs/plans/2026-05-30-confucius-pitch-deck.html`](docs/plans/2026-05-30-confucius-pitch-deck.html)
-
-**60-second structure:**
-
-| Time | Beat | What you see / hear |
-|---|---|---|
-| 0:00 – 0:05 | What | Tagline over a dim slow-mo of someone walking with earbuds |
-| 0:05 – 0:32 | How | Live recording of Confucius answering "What problem does Pipecat actually solve?" — dogfooded: the Pipecat-built bot teaches the viewer about Pipecat |
-| 0:32 – 0:45 | Dashboard | Cekura panel — concepts learned, time-to-understanding, trending topics |
-| 0:45 – 1:00 | Why | Punch ("you lose hours") + close ("everyone can learn anywhere, anytime") |
-
 ## 3. How we used Cekura, Nemotron, and Pipecat
 
 ### Pipecat — the whole thing rests on it
