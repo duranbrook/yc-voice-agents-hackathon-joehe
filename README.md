@@ -8,9 +8,9 @@ YC Voice Agents Hackathon submission — built with **Pipecat**, evaluated with 
 
 ## 1. What is this?
 
-**Confucius** is a voice-first tutor for the time you already lose every day — walking, training at the gym, commuting. You put your earbuds in, ask a question out loud, and have a real back-and-forth with the bot. The phone stays in your pocket. Your eyes and hands stay free.
+**Confucius is an interactive voice tutor for everyone — available anywhere your hands and eyes are busy.** Whether you're commuting, walking the dog, or training at the gym, slip your earbuds in, ask a question out loud, and have a real back-and-forth with the bot. Your phone stays in your pocket. Your eyes and hands stay free.
 
-YouTube and podcasts talk *at* you. Books need your eyes. Confucius is the first medium that lets you *interactively* learn while you're in motion.
+YouTube and podcasts talk *at* you. Books and articles need your eyes. Confucius is the first medium that lets you *interactively* learn while you're in motion — turning the dead minutes of your day into focused, conversational learning.
 
 Under the hood it's a Pipecat voice agent with a 5-phase session state machine — **Opening → Scoping → Teaching → Recap → Closing** — and five structured tools (`set_topic`, `add_concept_covered`, `mark_for_later`, `recap_session`, `end_session`) that turn every spoken session into queryable data. That structured trail is what makes the next step — observability and evaluation with Cekura — possible.
 
