@@ -1,14 +1,14 @@
 # Confucius — Interactive Voice Tutor
 
-> An interactive voice tutor for everyone. Anywhere, anytime your hands or eyes are busy.
-
-YC Voice Agents Hackathon submission — built with **Pipecat**, evaluated with **Cekura**.
-
 ---
 
 ## 1. What is this?
 
-**Confucius is an interactive voice tutor for everyone — available anywhere your hands and eyes are busy.** Whether you're commuting, walking the dog, or training at the gym, slip your earbuds in, ask a question out loud, and have a real back-and-forth with the bot. Your phone stays in your pocket. Your eyes and hands stay free.
+> An interactive voice tutor for everyone. Anywhere, anytime your hands or eyes are busy.
+
+YC Voice Agents Hackathon submission — built with **Pipecat**, evaluated with **Cekura**.
+
+Whether you're commuting, walking the dog, or training at the gym, slip your earbuds in, ask a question out loud, and have a real back-and-forth with the bot. Your phone stays in your pocket. Your eyes and hands stay free.
 
 YouTube and podcasts talk *at* you. Books and articles need your eyes. Confucius is the first medium that lets you *interactively* learn while you're in motion — turning the dead minutes of your day into focused, conversational learning.
 
