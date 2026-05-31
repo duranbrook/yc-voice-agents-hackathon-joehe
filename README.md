@@ -18,7 +18,7 @@ Under the hood it's a Pipecat voice agent with a 5-phase session state machine �
 
 **🎬 [Watch the 60-second demo](https://drive.google.com/file/d/150KIve1JKUN_98mDb12p2A8shQh69b1P/view?usp=drive_link)**
 
-## 3. How we used Cekura, Nemotron, and Pipecat
+## 3. How we used Cekura and Pipecat
 
 ### Pipecat — the whole thing rests on it
 
@@ -34,42 +34,17 @@ The 5-phase pedagogy is encoded entirely in the **system prompt**, not in code �
 
 **What Pipecat solved for us:** voice agents normally need weeks of WebRTC, VAD, turn-taking, STT→LLM→TTS streaming, barge-in handling, and deployment plumbing. Pipecat collapsed all of that into one Python file + one TOML. We built the tutor logic in an afternoon — not because the logic is small, but because everything *under* it was already solved. **Stripe-for-voice-infra is the right analogy.**
 
-### Cekura — evaluating and improving the tutor
+### Cekura — measuring the tutor
 
-We used Cekura as the **evaluation + observability** layer for tutoring sessions. The five Pipecat tools emit structured events (`set_topic`, `add_concept_covered`, `mark_for_later`, `recap_session`, `end_session`) that map directly onto the kind of data Cekura is built to observe — turning each free-form spoken conversation into queryable, comparable data:
+We use Cekura to evaluate how well the tutor actually teaches. Three core metrics:
 
-- **Concepts covered per session** — what the user actually got, not what they were exposed to.
-- **Time-to-understanding** — measured between when a topic is set and when the user signals comprehension (e.g. asking the next follow-up).
-- **Marked-for-later trail** — what users wanted to come back to but didn't have time for. Surfaces real demand.
-- **Trending topics across users** — what the whole user base is learning this week.
-
-**What we were trying to accomplish:** turn "I had a 10-minute chat with my bot" into something a product team can actually look at. Did the user learn? How fast? What did they bounce off of?
-
-**How we used the evaluator:** we ran `/cekura-report` against `learn-bot` with 10+ generated scenarios (curious-novice, expert-pushing-deeper, distracted-walker, topic-jumper, give-up-early). The early run surfaced two clear failure modes that the prompt didn't address: (1) the bot sometimes stayed in **Scoping** forever instead of committing to a topic when the user was vague, and (2) it skipped **Recap** when the user said "I have to go." We tightened the system prompt around both — explicit "commit to a topic within 2 turns" and "if the user signals end, run `recap_session` *before* `end_session`" — and the next Cekura run showed both behaviors land cleanly. That's the loop the platform makes easy: run, look at where it fails, fix the prompt, re-run.
-
-### Nemotron — staged, not shipped
-
-We did not swap the LLM to Nemotron in v1. The repo includes a Nemotron variant (`server/bot-nemotron.py`) that we plan to test side-by-side post-hackathon: same prompt, same tools, swap GPT-4.1 for Nemotron 3 Super 120B, compare in Cekura. Honest answer for now — we wanted to ship one solid agent, not two half-finished ones.
+- **Comprehension rate** — share of sessions where the learner clearly understands the topic by the end of the call.
+- **Time-to-grasp** — average seconds it takes a learner to signal understanding, broken down by topic.
+- **Trending topics** — what learners are most curious about right now, ranked across all sessions.
 
 ## 4. What we built during the hackathon
 
-Forked from the public Pipecat starter at [pipecat-ai/yc-voice-agents-hackathon](https://github.com/pipecat-ai/yc-voice-agents-hackathon). Everything below is **new** for this hackathon:
-
-| File | What it is |
-|---|---|
-| `server/bot-learn.py` | New Pipecat agent. Started as a copy of `bot-gpt.py`, then ripped out the flower-shop tools, swapped in our tutor tools, and replaced the system prompt with the 5-phase Confucius pedagogy. |
-| `server/learn_backend.py` | New module. `SessionState` dataclass + `make_tools()` factory + in-memory `_SESSIONS` store. ~150 lines, no dependencies outside Pipecat. |
-| `server/llm_context.md` | Curated context appended to the system prompt at startup — what the tutor knows about its own pedagogy, tools, and constraints. |
-| `server/cekura_client.py` | Thin client that ships our Pipecat transcripts to Cekura with the right `transcript_type` and flattened metadata. |
-| `server/Dockerfile` (modified) | Repointed at `bot-learn.py` + `learn_backend.py`; copies `cekura_client.py` into the deploy image. |
-| `server/pcc-deploy.toml` (modified) | New agent name `learn-bot`, new secrets set `learn-bot-secrets`. |
-| `docs/plans/2026-05-30-confucius-learning-bot-design.md` | Design doc — architecture, 5-phase state machine rationale, what's in/out of v1. |
-| `docs/plans/2026-05-30-confucius-learning-bot-plan.md` | 10-task implementation plan executed during the hackathon. |
-| `docs/plans/2026-05-30-confucius-cekura-dashboard.html` | Mock of the Cekura dashboard we wired up for tutoring metrics. |
-| `docs/plans/2026-05-30-confucius-demo-video-script.html` | Demo video script + storyboard. |
-| `docs/plans/2026-05-30-confucius-pitch-deck.html` | Pitch deck for judging. |
-
-**Not new (borrowed from the starter):** Pipecat pipeline scaffolding, VAD/turn-detection, Daily transport setup, Gradium STT/TTS wiring, the Twilio configuration block in [`docs/STARTER.md`](docs/STARTER.md). We left the original `bot-gpt.py` and `bot-nemotron.py` untouched.
+A learn-on-the-go tutor for the moments your hands and eyes are occupied.
 
 ## 5. Feedback on the tools
 
@@ -96,10 +71,6 @@ Forked from the public Pipecat starter at [pipecat-ai/yc-voice-agents-hackathon]
 
 **What we'd improve — biggest ask:**
 - **Custom product metrics with trend views.** Cekura's eval metrics are great for "did the agent do the task," but Confucius cares about *product* metrics — concepts-per-session, time-to-understanding, marked-for-later rate. We can log these as custom fields, but there's no first-class way to **plot a single metric's trend over time across runs** so we can see if last night's prompt change actually moved the needle. The shape we want: "show me `concepts_per_session` p50 by day for the last week, broken down by agent version." Right now we'd have to export and graph this ourselves. A self-improvement loop is only as good as the dashboard you trust to tell you it's working — that's the gap.
-
-### Nemotron
-
-We didn't run Nemotron in v1, so we don't have substantive feedback. Planned for the side-by-side eval post-hackathon: same prompt, swap LLMs, compare in Cekura. Anything we have to say now would be guessing — and the judges asked for honest feedback, so we'll send real notes after the eval.
 
 ## 6. Live link
 
