@@ -1,0 +1,497 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Confucius — 1-Minute Demo Video Script</title>
+<style>
+  :root {
+    --bg: #0f1115;
+    --panel: #161922;
+    --panel-2: #1c2030;
+    --ink: #e7e9ee;
+    --ink-dim: #a3a8b8;
+    --accent: #c9a86a;
+    --accent-2: #8ab4ff;
+    --rule: #2a2f3d;
+    --good: #6ee7a8;
+    --warn: #f0b86b;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; background: var(--bg); color: var(--ink); }
+  body {
+    font: 16px/1.6 -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", Roboto, sans-serif;
+    padding: 48px 24px 96px;
+  }
+  .wrap { max-width: 980px; margin: 0 auto; }
+
+  header {
+    border-bottom: 1px solid var(--rule);
+    padding-bottom: 28px;
+    margin-bottom: 36px;
+  }
+  .kicker {
+    text-transform: uppercase;
+    letter-spacing: 0.18em;
+    font-size: 12px;
+    color: var(--accent);
+    margin-bottom: 8px;
+  }
+  h1 {
+    font-size: 40px;
+    line-height: 1.15;
+    margin: 0 0 14px;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+  }
+  .meta {
+    display: flex; gap: 24px; flex-wrap: wrap;
+    color: var(--ink-dim); font-size: 14px;
+  }
+  .meta b { color: var(--ink); font-weight: 600; }
+
+  /* Section header */
+  .section {
+    margin: 48px 0 18px;
+    display: flex;
+    align-items: baseline;
+    gap: 18px;
+    border-bottom: 1px solid var(--rule);
+    padding-bottom: 10px;
+  }
+  .section .tag {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 11px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--accent);
+    background: #20242f;
+    padding: 4px 10px;
+    border-radius: 999px;
+  }
+  .section h2 {
+    font-size: 24px;
+    margin: 0;
+    letter-spacing: -0.005em;
+  }
+  .section .time {
+    margin-left: auto;
+    color: var(--ink-dim);
+    font-family: ui-monospace, monospace;
+    font-size: 13px;
+  }
+
+  /* Starter card */
+  .starter {
+    background: linear-gradient(180deg, #1c2030, #161922);
+    border: 1px solid var(--rule);
+    border-left: 3px solid var(--accent);
+    padding: 22px 26px;
+    border-radius: 8px;
+    font-size: 19px;
+    line-height: 1.5;
+  }
+  .starter em { color: var(--accent); font-style: normal; font-weight: 600; }
+
+  /* Demo conversation */
+  .demo {
+    background: var(--panel);
+    border: 1px solid var(--rule);
+    border-radius: 10px;
+    padding: 24px 26px;
+  }
+  .demo .turn {
+    display: grid;
+    grid-template-columns: 64px 1fr 80px;
+    gap: 14px;
+    align-items: start;
+    padding: 12px 0;
+    border-bottom: 1px dashed var(--rule);
+  }
+  .demo .turn:last-child { border-bottom: 0; }
+  .demo .who {
+    font-family: ui-monospace, monospace;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    padding-top: 4px;
+  }
+  .demo .who.runner { color: var(--accent-2); }
+  .demo .who.bot { color: var(--accent); }
+  .demo .line {
+    font-size: 17px;
+    line-height: 1.5;
+  }
+  .demo .line em { color: var(--accent); font-style: italic; }
+  .demo .t {
+    font-family: ui-monospace, monospace;
+    font-size: 12px;
+    color: var(--ink-dim);
+    text-align: right;
+    padding-top: 6px;
+  }
+  .demo-meta {
+    display: flex;
+    justify-content: space-between;
+    color: var(--ink-dim);
+    font-size: 13px;
+    margin-top: 14px;
+    padding-top: 14px;
+    border-top: 1px solid var(--rule);
+  }
+  .demo-meta b { color: var(--accent); }
+
+  /* Cekura dashboard */
+  .cekura-card {
+    background: linear-gradient(180deg, #1c2030, #131620);
+    border: 1px solid var(--rule);
+    border-radius: 12px;
+    padding: 22px 24px;
+  }
+  .cekura-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 18px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--rule);
+  }
+  .cekura-label {
+    font-family: ui-monospace, monospace;
+    font-size: 12px;
+    color: var(--accent);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+  .cekura-stamp {
+    font-size: 10px;
+    color: var(--ink-dim);
+    border: 1px solid var(--rule);
+    padding: 3px 8px;
+    border-radius: 4px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+  .cekura-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 18px;
+  }
+  .cekura-block h4 {
+    margin: 0 0 10px;
+    font-size: 11px;
+    color: var(--ink-dim);
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+  }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+  .chip {
+    background: #20242f;
+    color: var(--accent);
+    border: 1px solid var(--rule);
+    padding: 4px 10px;
+    border-radius: 999px;
+    font-size: 13px;
+  }
+  .chips.dim .chip { color: var(--accent-2); }
+  .spark {
+    width: 100%;
+    height: 40px;
+    display: block;
+    margin-bottom: 6px;
+  }
+  .cekura-stat {
+    font-size: 13px;
+    color: var(--good);
+  }
+  .cekura-vo {
+    margin-top: 14px;
+    font-size: 14.5px;
+    color: var(--ink-dim);
+    background: var(--panel);
+    border: 1px solid var(--rule);
+    border-left: 3px solid var(--accent);
+    border-radius: 6px;
+    padding: 10px 14px;
+  }
+  .cekura-vo b { color: var(--ink); }
+
+  /* Why */
+  .why {
+    background: var(--panel);
+    border: 1px solid var(--rule);
+    border-radius: 10px;
+    padding: 22px 26px;
+  }
+  .why .punch {
+    font-size: 20px;
+    line-height: 1.45;
+    margin: 0 0 16px;
+  }
+  .why .punch em { color: var(--accent); font-style: italic; }
+  .why .losses {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+    margin-top: 8px;
+  }
+  .why .loss {
+    background: #20242f;
+    border-radius: 6px;
+    padding: 12px 14px;
+  }
+  .why .loss h4 {
+    margin: 0 0 4px;
+    font-size: 13px;
+    color: var(--warn);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+  }
+  .why .loss p { margin: 0; font-size: 14px; color: var(--ink-dim); }
+  .why .resolution {
+    margin: 20px 0 0;
+    padding-top: 16px;
+    border-top: 1px solid var(--rule);
+    font-size: 20px;
+    line-height: 1.45;
+    color: var(--ink);
+  }
+  .why .resolution em {
+    color: var(--accent);
+    font-style: normal;
+    font-weight: 600;
+  }
+
+  /* Who/When/Where */
+  .wheres {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 14px;
+  }
+  .where {
+    background: var(--panel);
+    border: 1px solid var(--rule);
+    border-radius: 10px;
+    padding: 20px 22px;
+  }
+  .where .label {
+    font-family: ui-monospace, monospace;
+    font-size: 11px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 6px;
+  }
+  .where .value {
+    font-size: 22px;
+    line-height: 1.25;
+    font-weight: 600;
+    margin-bottom: 8px;
+  }
+  .where p {
+    margin: 0;
+    color: var(--ink-dim);
+    font-size: 14px;
+  }
+
+  /* Footer notes */
+  .notes {
+    margin-top: 48px;
+    border-top: 1px solid var(--rule);
+    padding-top: 28px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+  }
+  .note {
+    background: var(--panel);
+    border: 1px solid var(--rule);
+    border-radius: 8px;
+    padding: 14px 18px;
+  }
+  .note h3 {
+    margin: 0 0 6px;
+    font-size: 13px;
+    color: var(--accent-2);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+  }
+  .note p { margin: 0; font-size: 14.5px; }
+
+  code {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 0.88em;
+    background: #20242f;
+    padding: 1px 6px;
+    border-radius: 4px;
+    color: var(--accent);
+  }
+
+  @media (max-width: 760px) {
+    .demo .turn { grid-template-columns: 48px 1fr; }
+    .demo .t { display: none; }
+    .why .losses, .wheres, .notes, .cekura-row { grid-template-columns: 1fr; }
+    h1 { font-size: 30px; }
+    .section { flex-wrap: wrap; }
+    .section .time { margin-left: 0; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <div class="kicker">Demo Video Script · v2</div>
+  <h1>1-Minute Demo</h1>
+  <div class="meta">
+    <span><b>Length</b> 60 seconds</span>
+    <span><b>Structure</b> What → How → Dashboard → Why</span>
+    <span><b>Built on</b> Pipecat + Cekura</span>
+  </div>
+</header>
+
+<!-- 1. WHAT (Starter) -->
+<div class="section">
+  <span class="tag">1 · What</span>
+  <h2>Starter</h2>
+  <span class="time">0:00 – 0:05</span>
+</div>
+<div class="starter">
+  An <em>interactive voice tutor</em> for everyone. <em>Anywhere, anytime your hands or eyes are busy.</em>
+</div>
+
+<!-- 2. HOW (Demo) -->
+<div class="section">
+  <span class="tag">2 · How</span>
+  <h2>Demo — one real exchange</h2>
+  <span class="time">0:05 – 0:32 (27 s)</span>
+</div>
+<div class="demo">
+  <div class="turn">
+    <div class="who runner">Me</div>
+    <div class="line">"What problem does Pipecat actually solve?"</div>
+    <div class="t">~3 s</div>
+  </div>
+  <div class="turn">
+    <div class="who bot">Confucius</div>
+    <div class="line">"Voice agents need WebRTC, voice detection, and mic-to-LLM-to-voice streaming. Pipecat collapses that into <em>one Python file</em>. You bring the prompt; it runs the pipeline."</div>
+    <div class="t">~9 s</div>
+  </div>
+  <div class="turn">
+    <div class="who runner">Me</div>
+    <div class="line">"Why does that matter?"</div>
+    <div class="t">~1.5 s</div>
+  </div>
+  <div class="turn">
+    <div class="who bot">Confucius</div>
+    <div class="line">"Ship a voice agent in an afternoon, not three weeks. Stripe, but for voice infra."</div>
+    <div class="t">~5 s</div>
+  </div>
+  <div class="turn">
+    <div class="who runner">Me</div>
+    <div class="line">"Got it. Thanks."</div>
+    <div class="t">~1.5 s</div>
+  </div>
+  <div class="turn">
+    <div class="who bot">Confucius</div>
+    <div class="line">"Anytime." <span style="color:var(--ink-dim); font-size:13px;">[<code>end_session</code> fires]</span></div>
+    <div class="t">~1 s</div>
+  </div>
+  <div class="demo-meta">
+    <span>The bot that explains Pipecat <em>is built on</em> Pipecat. That's the demo.</span>
+    <span><b>~22 s</b> · phone never lit up</span>
+  </div>
+</div>
+
+<!-- 3. DASHBOARD (Cekura) -->
+<div class="section">
+  <span class="tag">3 · Dashboard</span>
+  <h2>What Cekura sees</h2>
+  <span class="time">0:32 – 0:45 (13 s)</span>
+</div>
+<div class="cekura">
+  <div class="cekura-card">
+    <div class="cekura-head">
+      <span class="cekura-label">session · 25 s · topic: Pipecat</span>
+      <span class="cekura-stamp">mockup · powered by Cekura</span>
+    </div>
+    <div class="cekura-row">
+      <div class="cekura-block">
+        <h4>concepts covered</h4>
+        <div class="chips">
+          <span class="chip">Pipecat</span>
+          <span class="chip">voice-agent infra</span>
+          <span class="chip">Stripe analogy</span>
+        </div>
+      </div>
+      <div class="cekura-block">
+        <h4>time-to-understanding</h4>
+        <svg class="spark" viewBox="0 0 120 40" preserveAspectRatio="none" aria-hidden="true">
+          <polyline points="0,32 15,28 30,30 45,22 60,20 75,14 90,12 105,8 120,6"
+            fill="none" stroke="#c9a86a" stroke-width="2"/>
+        </svg>
+        <span class="cekura-stat">~9 s · faster than your last 3 sessions</span>
+      </div>
+      <div class="cekura-block">
+        <h4>trending this week</h4>
+        <div class="chips dim">
+          <span class="chip">Pipecat</span>
+          <span class="chip">RAG eval</span>
+          <span class="chip">tariffs</span>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="cekura-vo">
+    <b>VO (low, confident):</b> "Every session is measured. How long you took to get it — and what everyone's learning right now."
+  </div>
+</div>
+
+<!-- 4. WHY (Problem) -->
+<div class="section">
+  <span class="tag">4 · Why</span>
+  <h2>The problem it solves</h2>
+  <span class="time">0:45 – 1:00 (15 s)</span>
+</div>
+<div class="why">
+  <p class="punch">Every day you lose hours — walking, training, commuting. You <em>can't interactively learn</em> with your phone while in motion.</p>
+  <div class="losses">
+    <div class="loss">
+      <h4>Books</h4>
+      <p>Need your eyes. Can't read while you move.</p>
+    </div>
+    <div class="loss">
+      <h4>YouTube</h4>
+      <p>Talks <em>at</em> you. Can't ask a follow-up.</p>
+    </div>
+    <div class="loss">
+      <h4>Podcasts</h4>
+      <p>Linear. Scrubbing back kills the flow.</p>
+    </div>
+  </div>
+  <p class="resolution">With <em>Confucius</em>, everyone can learn — anywhere, anytime.</p>
+</div>
+
+<!-- Production notes -->
+<div class="notes">
+  <div class="note">
+    <h3>Capture audio for real</h3>
+    <p>Record the demo against the deployed <code>learn-bot</code>. Don't script the bot's lines word-for-word — let the real model output drive the cut. The Q and follow-up are the only things you stage.</p>
+  </div>
+  <div class="note">
+    <h3>Never show the phone screen</h3>
+    <p>Phone stays in the pocket / on the armband the entire video. The point lands the second a viewer realizes the screen never came on.</p>
+  </div>
+  <div class="note">
+    <h3>Captions on, music off</h3>
+    <p>Burn-in captions in two colors (you / bot). No music under the demo turn — the bot's voice is the product.</p>
+  </div>
+  <div class="note">
+    <h3>If over time</h3>
+    <p>Trim the bot's first answer by one sentence. Never trim the follow-up — the follow-up is the whole <em>interactive</em> argument.</p>
+  </div>
+</div>
+
+</div>
+</body>
+</html>

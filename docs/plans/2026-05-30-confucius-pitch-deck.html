@@ -1,0 +1,708 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Confucius — Pitch Deck</title>
+<style>
+  :root {
+    --bg: #0b0d12;
+    --panel: #161922;
+    --panel-2: #1c2030;
+    --ink: #e7e9ee;
+    --ink-dim: #a3a8b8;
+    --accent: #c9a86a;
+    --accent-2: #8ab4ff;
+    --rule: #2a2f3d;
+    --good: #6ee7a8;
+    --warn: #f0b86b;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0; padding: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", Roboto, sans-serif;
+    overflow: hidden;
+    height: 100vh;
+  }
+  /* ---------- deck shell ---------- */
+  .deck {
+    position: relative;
+    width: 100vw;
+    height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .slide {
+    position: absolute;
+    inset: 0;
+    display: none;
+    padding: 56px 72px 88px;
+    overflow: hidden;
+  }
+  .slide.active { display: flex; flex-direction: column; }
+  .slide-inner {
+    width: 100%;
+    max-width: 1280px;
+    margin: 0 auto;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+  }
+  /* ---------- header bar ---------- */
+  .topbar {
+    position: absolute;
+    top: 24px;
+    left: 32px;
+    right: 32px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 12px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--ink-dim);
+    z-index: 5;
+  }
+  .topbar .brand {
+    font-weight: 700;
+    color: var(--accent);
+    letter-spacing: 0.18em;
+  }
+  .topbar .timer { display: none; }
+  /* ---------- footer ---------- */
+  .footer {
+    position: absolute;
+    bottom: 18px;
+    left: 32px;
+    right: 32px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 12px;
+    color: var(--ink-dim);
+    z-index: 5;
+  }
+  .footer .count {
+    font-family: ui-monospace, monospace;
+  }
+  .footer .nav { display: flex; gap: 8px; }
+  .footer .nav button {
+    background: var(--panel);
+    border: 1px solid var(--rule);
+    color: var(--ink);
+    padding: 4px 10px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-family: ui-monospace, monospace;
+    font-size: 12px;
+  }
+  .footer .nav button:hover { background: var(--panel-2); }
+  .progress {
+    position: absolute;
+    top: 0; left: 0; right: 0; height: 3px;
+    background: var(--rule);
+    z-index: 6;
+  }
+  .progress > div {
+    height: 100%;
+    background: var(--accent);
+    transition: width 200ms ease;
+  }
+
+  /* ---------- shared section header ---------- */
+  .stage-tag {
+    font-family: ui-monospace, monospace;
+    font-size: 11px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 12px;
+  }
+  h1.slide-title {
+    font-size: 56px;
+    line-height: 1.05;
+    margin: 0 0 18px;
+    letter-spacing: -0.015em;
+    font-weight: 700;
+  }
+  h2.slide-title {
+    font-size: 44px;
+    line-height: 1.1;
+    margin: 0 0 16px;
+    letter-spacing: -0.01em;
+    font-weight: 700;
+  }
+  .sub {
+    font-size: 18px;
+    color: var(--ink-dim);
+    margin-bottom: 28px;
+  }
+
+  /* ---------- cover slide ---------- */
+  .cover {
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+  }
+  .cover-inner { text-align: center; }
+  .cover h1 {
+    font-size: 88px;
+    margin: 0 0 12px;
+    letter-spacing: -0.02em;
+  }
+  .cover .tag {
+    font-size: 22px;
+    color: var(--ink-dim);
+    margin-bottom: 56px;
+  }
+  .timeline {
+    display: grid;
+    grid-template-columns: 5fr 27fr 13fr 15fr;
+    gap: 6px;
+    width: min(960px, 90%);
+    margin: 0 auto 24px;
+  }
+  .timeline .bar {
+    background: var(--panel);
+    border: 1px solid var(--rule);
+    border-radius: 6px;
+    padding: 12px 14px;
+    text-align: left;
+  }
+  .timeline .bar.b1 { border-left: 3px solid var(--accent); }
+  .timeline .bar.b2 { border-left: 3px solid var(--accent-2); }
+  .timeline .bar.b3 { border-left: 3px solid var(--good); }
+  .timeline .bar.b4 { border-left: 3px solid var(--warn); }
+  .timeline .bar h4 {
+    margin: 0;
+    font-size: 11px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--ink-dim);
+  }
+  .timeline .bar p {
+    margin: 4px 0 0;
+    font-size: 16px;
+    font-weight: 600;
+  }
+  .timeline .bar span {
+    font-family: ui-monospace, monospace;
+    font-size: 11px;
+    color: var(--accent);
+  }
+  .cover-credits {
+    font-size: 14px;
+    color: var(--ink-dim);
+    margin-top: 32px;
+  }
+  .cover-credits b { color: var(--accent); }
+
+  /* ---------- What slide (with video bg) ---------- */
+  .video-bg {
+    position: absolute;
+    inset: 0;
+    background:
+      linear-gradient(180deg, rgba(11,13,18,0.45) 0%, rgba(11,13,18,0.85) 100%),
+      radial-gradient(ellipse at 70% 30%, #2a3445 0%, #0b0d12 60%);
+    z-index: 0;
+  }
+  .video-bg::before {
+    content: "▶ video bg · runner with earbuds · slow-mo · dim";
+    position: absolute;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    font-family: ui-monospace, monospace;
+    font-size: 11px;
+    color: rgba(255,255,255,0.25);
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    border: 1px dashed rgba(255,255,255,0.18);
+    padding: 6px 14px;
+    border-radius: 4px;
+  }
+  .what .slide-inner {
+    position: relative;
+    z-index: 2;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+  }
+  .what h1 {
+    font-size: 64px;
+    line-height: 1.1;
+    letter-spacing: -0.015em;
+    margin: 0 0 16px;
+    max-width: 900px;
+  }
+  .what .accent { color: var(--accent); }
+  .what .vo {
+    margin-top: 32px;
+    color: var(--ink-dim);
+    font-size: 14px;
+    letter-spacing: 0.06em;
+  }
+
+  /* ---------- Demo slide ---------- */
+  .demo .slide-inner { flex-direction: row; gap: 32px; }
+  .demo .col-left { flex: 3; display: flex; flex-direction: column; }
+  .demo .col-right { flex: 2; display: flex; flex-direction: column; }
+  .video-frame {
+    flex: 1;
+    border: 1px solid var(--rule);
+    border-radius: 10px;
+    background:
+      linear-gradient(180deg, #131620, #0b0d12),
+      repeating-linear-gradient(45deg, transparent, transparent 12px, rgba(255,255,255,0.02) 12px, rgba(255,255,255,0.02) 14px);
+    background-blend-mode: normal;
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    min-height: 380px;
+  }
+  .video-frame::before {
+    content: "";
+    position: absolute;
+    inset: 14px;
+    border: 1px dashed rgba(255,255,255,0.12);
+    border-radius: 6px;
+    pointer-events: none;
+  }
+  .video-frame .play {
+    width: 78px; height: 78px;
+    border-radius: 50%;
+    background: rgba(201,168,106,0.18);
+    border: 2px solid var(--accent);
+    display: flex; align-items: center; justify-content: center;
+    margin-bottom: 14px;
+  }
+  .video-frame .play::after {
+    content: "";
+    border-left: 20px solid var(--accent);
+    border-top: 12px solid transparent;
+    border-bottom: 12px solid transparent;
+    margin-left: 6px;
+  }
+  .video-frame .vf-label {
+    text-align: center;
+    font-family: ui-monospace, monospace;
+    font-size: 11px;
+    letter-spacing: 0.16em;
+    color: var(--ink-dim);
+    text-transform: uppercase;
+  }
+  .video-frame .vf-label b { color: var(--accent); display: block; font-size: 14px; margin-top: 4px; letter-spacing: 0.1em; }
+  .video-caption {
+    margin-top: 14px;
+    font-size: 13px;
+    color: var(--ink-dim);
+  }
+  .dialog { display: flex; flex-direction: column; gap: 8px; }
+  .dialog .t {
+    display: grid;
+    grid-template-columns: 56px 1fr;
+    gap: 8px;
+    align-items: start;
+    font-size: 14px;
+    line-height: 1.45;
+  }
+  .dialog .t .w {
+    font-family: ui-monospace, monospace;
+    font-size: 10px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    padding-top: 3px;
+  }
+  .dialog .t.me .w { color: var(--accent-2); }
+  .dialog .t.bot .w { color: var(--accent); }
+  .dialog .t em { color: var(--accent); font-style: italic; }
+
+  /* ---------- Dashboard slide ---------- */
+  .dash .slide-inner { flex-direction: row; gap: 32px; }
+  .dash .col-left { flex: 3; }
+  .dash .col-right { flex: 2; }
+  .cekura-mock {
+    border: 1px solid var(--rule);
+    border-radius: 12px;
+    background: linear-gradient(180deg, #1c2030, #131620);
+    padding: 22px 24px;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+  }
+  .cm-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-bottom: 14px;
+    border-bottom: 1px solid var(--rule);
+    margin-bottom: 18px;
+  }
+  .cm-head .label {
+    font-family: ui-monospace, monospace;
+    font-size: 12px;
+    color: var(--accent);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+  }
+  .cm-head .live {
+    font-size: 10px;
+    color: var(--good);
+    border: 1px solid var(--good);
+    padding: 3px 8px;
+    border-radius: 999px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+  .cm-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin-bottom: 16px;
+  }
+  .cm-block h4 {
+    font-size: 10px;
+    color: var(--ink-dim);
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    margin: 0 0 10px;
+  }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+  .chip {
+    background: #20242f;
+    color: var(--accent);
+    border: 1px solid var(--rule);
+    padding: 3px 10px;
+    border-radius: 999px;
+    font-size: 12px;
+  }
+  .chips.dim .chip { color: var(--accent-2); }
+  .spark { width: 100%; height: 60px; }
+  .stat {
+    font-size: 12px;
+    color: var(--good);
+    margin-top: 4px;
+  }
+  .demo .col-right h3,
+  .dash .col-right h3 {
+    margin: 0 0 10px;
+    font-size: 14px;
+    color: var(--accent-2);
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+  }
+  .vo-box {
+    background: var(--panel);
+    border: 1px solid var(--rule);
+    border-left: 3px solid var(--accent);
+    padding: 14px 16px;
+    border-radius: 6px;
+    margin-bottom: 14px;
+    font-size: 14px;
+    line-height: 1.5;
+  }
+  .vo-box em { color: var(--accent); font-style: italic; }
+  .notes-block { font-size: 13px; color: var(--ink-dim); line-height: 1.55; }
+  .notes-block ul { padding-left: 18px; margin: 6px 0 0; }
+  .notes-block li { margin-bottom: 4px; }
+
+  /* ---------- Why slide ---------- */
+  .why .slide-inner { justify-content: center; }
+  .why .punch {
+    font-size: 38px;
+    line-height: 1.2;
+    letter-spacing: -0.01em;
+    margin: 0 0 28px;
+    font-weight: 600;
+  }
+  .why .punch em { color: var(--warn); font-style: italic; }
+  .losses {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 14px;
+    margin-bottom: 28px;
+  }
+  .loss {
+    background: var(--panel);
+    border: 1px solid var(--rule);
+    border-radius: 8px;
+    padding: 16px 20px;
+  }
+  .loss h4 {
+    margin: 0 0 6px;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--warn);
+  }
+  .loss p { margin: 0; font-size: 14px; color: var(--ink-dim); }
+  .resolution {
+    font-size: 32px;
+    line-height: 1.3;
+    padding-top: 22px;
+    border-top: 1px solid var(--rule);
+    font-weight: 600;
+  }
+  .resolution em {
+    color: var(--accent);
+    font-style: normal;
+  }
+
+  /* ---------- Help overlay ---------- */
+  .help {
+    position: fixed;
+    bottom: 60px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 11px;
+    color: var(--ink-dim);
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    opacity: 0.5;
+    pointer-events: none;
+  }
+
+  /* ---------- Optional fade in ---------- */
+  .slide.active .slide-inner {
+    animation: fade 380ms ease;
+  }
+  @keyframes fade {
+    from { opacity: 0; transform: translateY(6px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+</style>
+</head>
+<body>
+
+<div class="deck">
+
+  <div class="progress"><div id="progress-bar" style="width:0%"></div></div>
+
+  <!-- Slide 0: Cover -->
+  <section class="slide cover active" data-time="cover" data-stage="hub">
+    <div class="topbar">
+      <span class="brand">Confucius</span>
+      <span class="timer">1-min demo · pitch deck</span>
+    </div>
+    <div class="slide-inner cover-inner">
+      <h1>Confucius</h1>
+      <p class="tag">An interactive voice tutor — anywhere your hands or eyes are busy.</p>
+      <div class="timeline">
+        <div class="bar b1">
+          <h4>1 · What</h4>
+          <p>Starter</p>
+          <span>0:00 – 0:05 · 5 s</span>
+        </div>
+        <div class="bar b2">
+          <h4>2 · How</h4>
+          <p>Live demo</p>
+          <span>0:05 – 0:32 · 27 s</span>
+        </div>
+        <div class="bar b3">
+          <h4>3 · Dashboard</h4>
+          <p>Cekura</p>
+          <span>0:32 – 0:45 · 13 s</span>
+        </div>
+        <div class="bar b4">
+          <h4>4 · Why</h4>
+          <p>Problem + close</p>
+          <span>0:45 – 1:00 · 15 s</span>
+        </div>
+      </div>
+      <p class="cover-credits">Built on <b>Pipecat</b> + <b>Cekura</b></p>
+    </div>
+  </section>
+
+  <!-- Slide 1: What -->
+  <section class="slide what" data-time="0:00 – 0:05" data-stage="1 · What">
+    <div class="video-bg"></div>
+    <div class="topbar">
+      <span class="brand">1 · What</span>
+      <span class="timer">0:00 – 0:05  ·  5 s</span>
+    </div>
+    <div class="slide-inner">
+      <h1>
+        An interactive voice tutor <span class="accent">for everyone</span>.<br>
+        <span class="accent">Anywhere, anytime</span> your hands or eyes are busy.
+      </h1>
+      <div class="vo">VO · ~5 s · text overlaid on darkened slow-mo B-roll (runner / walker with earbuds)</div>
+    </div>
+  </section>
+
+  <!-- Slide 2: How (Demo) -->
+  <section class="slide demo" data-time="0:05 – 0:32" data-stage="2 · How">
+    <div class="topbar">
+      <span class="brand">2 · How</span>
+      <span class="timer">0:05 – 0:32  ·  27 s</span>
+    </div>
+    <div class="slide-inner">
+      <div class="col-left">
+        <div class="video-frame">
+          <div style="display:flex; flex-direction:column; align-items:center;">
+            <div class="play"></div>
+            <div class="vf-label">
+              screen recording
+              <b>deployed learn-bot · phone in pocket</b>
+            </div>
+          </div>
+        </div>
+        <p class="video-caption">Real audio captured against the deployed bot. Phone stays in pocket — camera never cuts to the screen.</p>
+      </div>
+      <div class="col-right">
+        <h3>What we hear</h3>
+        <div class="dialog">
+          <div class="t me"><span class="w">Me</span><span>"What problem does Pipecat actually solve?"</span></div>
+          <div class="t bot"><span class="w">Conf.</span><span>"Voice agents need WebRTC, voice detection, and mic-to-LLM-to-voice streaming. Pipecat collapses that into <em>one Python file</em>. You bring the prompt; it runs the pipeline."</span></div>
+          <div class="t me"><span class="w">Me</span><span>"Why does that matter?"</span></div>
+          <div class="t bot"><span class="w">Conf.</span><span>"Ship a voice agent in an afternoon, not three weeks. Stripe, but for voice infra."</span></div>
+          <div class="t me"><span class="w">Me</span><span>"Got it. Thanks."</span></div>
+          <div class="t bot"><span class="w">Conf.</span><span>"Anytime." <span style="color:var(--ink-dim);">[end_session]</span></span></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Slide 3: Dashboard -->
+  <section class="slide dash" data-time="0:32 – 0:45" data-stage="3 · Dashboard">
+    <div class="topbar">
+      <span class="brand">3 · Dashboard</span>
+      <span class="timer">0:32 – 0:45  ·  13 s</span>
+    </div>
+    <div class="slide-inner">
+      <div class="col-left">
+        <div class="cekura-mock">
+          <div class="cm-head">
+            <span class="label">session · 25 s · topic: Pipecat</span>
+            <span class="live">live · Cekura</span>
+          </div>
+          <div class="cm-row">
+            <div class="cm-block">
+              <h4>concepts covered</h4>
+              <div class="chips">
+                <span class="chip">Pipecat</span>
+                <span class="chip">voice-agent infra</span>
+                <span class="chip">Stripe analogy</span>
+              </div>
+            </div>
+            <div class="cm-block">
+              <h4>trending this week</h4>
+              <div class="chips dim">
+                <span class="chip">Pipecat</span>
+                <span class="chip">RAG eval</span>
+                <span class="chip">tariffs</span>
+              </div>
+            </div>
+          </div>
+          <div class="cm-block" style="margin-top: auto;">
+            <h4>time-to-understanding</h4>
+            <svg class="spark" viewBox="0 0 400 60" preserveAspectRatio="none">
+              <polyline points="0,46 50,42 100,44 150,30 200,28 250,18 300,16 350,10 400,8"
+                fill="none" stroke="#c9a86a" stroke-width="2"/>
+              <circle cx="400" cy="8" r="4" fill="#c9a86a"/>
+            </svg>
+            <p class="stat">~9 s · faster than your last 3 sessions</p>
+          </div>
+        </div>
+      </div>
+      <div class="col-right">
+        <h3>VO over the dashboard</h3>
+        <div class="vo-box">
+          "Every session is measured. <em>How long you took to get it</em> — and what everyone's learning right now."
+        </div>
+        <div class="notes-block">
+          <b>Why this beat:</b>
+          <ul>
+            <li>Cekura turns the conversation into structured data — concepts, time-to-understanding, cross-user trends.</li>
+            <li>Recorded as a real screen-cap of the live panel, not a static frame — viewer sees the chips populate from the bot's tool calls.</li>
+            <li>Stamp the corner <code>powered by Cekura</code> so the partnership lands without VO time.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Slide 4: Why -->
+  <section class="slide why" data-time="0:45 – 1:00" data-stage="4 · Why">
+    <div class="topbar">
+      <span class="brand">4 · Why</span>
+      <span class="timer">0:45 – 1:00  ·  15 s</span>
+    </div>
+    <div class="slide-inner">
+      <p class="punch">
+        Every day you lose hours — walking, training, commuting.<br>
+        You <em>can't interactively learn</em> with your phone while in motion.
+      </p>
+      <div class="losses">
+        <div class="loss">
+          <h4>Books</h4>
+          <p>Need your eyes. Can't read while you move.</p>
+        </div>
+        <div class="loss">
+          <h4>YouTube</h4>
+          <p>Talks at you. Can't ask a follow-up.</p>
+        </div>
+        <div class="loss">
+          <h4>Podcasts</h4>
+          <p>Linear. Scrubbing back kills the flow.</p>
+        </div>
+      </div>
+      <p class="resolution">
+        With <em>Confucius</em>, everyone can learn — anywhere, anytime.
+      </p>
+    </div>
+  </section>
+
+  <div class="footer">
+    <span class="count" id="count">1 / 5</span>
+    <span style="font-family:ui-monospace,monospace; letter-spacing:0.12em; text-transform:uppercase;">← / → to navigate · F for fullscreen</span>
+    <div class="nav">
+      <button onclick="prev()">← prev</button>
+      <button onclick="next()">next →</button>
+    </div>
+  </div>
+
+  <div class="help">← / → · F = fullscreen · 1–5 = jump</div>
+</div>
+
+<script>
+  const slides = Array.from(document.querySelectorAll('.slide'));
+  let i = 0;
+  const count = document.getElementById('count');
+  const bar = document.getElementById('progress-bar');
+
+  function show(n) {
+    i = Math.max(0, Math.min(slides.length - 1, n));
+    slides.forEach((s, idx) => s.classList.toggle('active', idx === i));
+    count.textContent = `${i + 1} / ${slides.length}`;
+    bar.style.width = `${((i + 1) / slides.length) * 100}%`;
+  }
+  function next() { show(i + 1); }
+  function prev() { show(i - 1); }
+
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'ArrowRight' || e.key === ' ' || e.key === 'PageDown') { e.preventDefault(); next(); }
+    else if (e.key === 'ArrowLeft' || e.key === 'PageUp') { e.preventDefault(); prev(); }
+    else if (e.key === 'f' || e.key === 'F') {
+      if (!document.fullscreenElement) document.documentElement.requestFullscreen();
+      else document.exitFullscreen();
+    }
+    else if (/^[1-9]$/.test(e.key)) { show(parseInt(e.key, 10) - 1); }
+    else if (e.key === 'Home') show(0);
+    else if (e.key === 'End') show(slides.length - 1);
+  });
+
+  // Click anywhere on the slide (not buttons) to advance
+  document.querySelector('.deck').addEventListener('click', (e) => {
+    if (e.target.closest('button')) return;
+    next();
+  });
+
+  show(0);
+</script>
+
+</body>
+</html>
