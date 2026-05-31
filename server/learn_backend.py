@@ -64,17 +64,99 @@ class SessionState:
 _SESSIONS: dict[str, SessionState] = {}
 
 
-def get_or_create_session(session_id: str) -> SessionState:
-    """Return the state for session_id, creating it if missing."""
+def get_or_create_session(session_id: str, user_id: str = "default_user") -> SessionState:
+    """Return the state for session_id, creating it if missing. If creating,
+    associate the new state with `user_id` (from runner_args.body in v2, or
+    'default_user' for anonymous v1 sessions)."""
     state = _SESSIONS.get(session_id)
     if state is None:
-        state = SessionState(session_id=session_id, started_at=datetime.now(timezone.utc))
+        state = SessionState(
+            session_id=session_id,
+            started_at=datetime.now(timezone.utc),
+            user_id=user_id,
+        )
         _SESSIONS[session_id] = state
     return state
 
 
 def _duration_minutes(state: SessionState) -> float:
     return (datetime.now(timezone.utc) - state.started_at).total_seconds() / 60.0
+
+
+def build_memory_prompt_block(memory: dict) -> str:
+    """Compose the markdown block appended to system_instruction when a returning
+    user is detected. The LLM uses this to shape its opening turn.
+
+    `memory` is the dict returned by supabase_client.load_memory():
+      {"recency_bucket": str, "summary": dict|None, "last_session": dict|None}
+    """
+    bucket = memory.get("recency_bucket", "new")
+    summary = memory.get("summary") or {}
+    last = memory.get("last_session") or {}
+    last_payload = (last.get("payload") or {}) if last else {}
+
+    name = summary.get("name") or "the learner"
+    last_topic = last_payload.get("topic") or "an unspecified topic"
+    last_phase = last_payload.get("phase_reached") or "unknown"
+    concepts_lifetime = summary.get("concepts_lifetime") or []
+    marked_for_later = summary.get("marked_for_later") or []
+    last_concepts = last_payload.get("concepts_covered") or []
+
+    concepts_short = ", ".join(
+        c.get("concept", "?") for c in (last_concepts[:3] if isinstance(last_concepts, list) else [])
+    ) or "no concepts yet"
+    marked_short = ", ".join(
+        m.get("item", "?") for m in (marked_for_later[:2] if isinstance(marked_for_later, list) else [])
+    ) or "nothing"
+
+    open_concept = None
+    if isinstance(last_concepts, list):
+        for c in reversed(last_concepts):
+            if c.get("ended_at") is None:
+                open_concept = c.get("concept")
+                break
+
+    rule_map = {
+        "new": (
+            "Standard opening — no memory context. Say: "
+            "\"Hi, I'm Confucius. What do you want to learn about today?\""
+        ),
+        "clean_recent": (
+            f"Last session was clean (recap delivered) and recent. Open with: "
+            f"\"Welcome back. Last time we covered {concepts_short}; you wanted to come back to "
+            f"{marked_short}. Pick up there, or something new?\""
+        ),
+        "clean_stale": (
+            f"Last session was clean but >= 7 days ago. Open lightly: "
+            f"\"Welcome back — it's been a minute. Want to revisit {last_topic} or pick something new?\""
+        ),
+        "mid_topic_recent": (
+            f"Last session disconnected mid-topic ({last_topic}, phase={last_phase}) within 24h. Open with: "
+            f"\"Welcome back. We were just getting to {open_concept or last_topic} — want to keep going?\""
+        ),
+        "mid_topic_stale": (
+            f"Last session disconnected mid-topic ({last_topic}) more than a day ago. Open with: "
+            f"\"Welcome back. We were on {last_topic} last time but didn't finish "
+            f"{open_concept or 'it'}. Resume or new topic?\""
+        ),
+    }
+    opening_rule = rule_map.get(bucket, rule_map["new"])
+
+    return (
+        "## Memory context\n\n"
+        f"You are talking to **{name}** (returning learner).\n\n"
+        f"**Recency bucket**: `{bucket}`\n"
+        f"- Total prior sessions: {summary.get('total_sessions', 0)}\n"
+        f"- Total time learning with you: {summary.get('total_minutes', 0)} minutes\n"
+        f"- Last topic: {last_topic} (phase reached: {last_phase})\n"
+        f"- Concepts covered last time: {concepts_short}\n"
+        f"- Marked for later: {marked_short}\n"
+        f"- Lifetime concepts: {len(concepts_lifetime)}\n\n"
+        f"**Opening rule (CRITICAL — use this for your first turn)**: {opening_rule}\n\n"
+        "Use the structured data above to fill any placeholders. Speak the opening line naturally — "
+        "do NOT read out the bracketed labels. After the opening, proceed through the 5-phase tutor flow "
+        "as usual.\n"
+    )
 
 
 # ---------- Tool factory ------------------------------------------------
