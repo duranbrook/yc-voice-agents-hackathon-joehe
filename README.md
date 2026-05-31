@@ -48,26 +48,7 @@ A learn-on-the-go tutor for the moments your hands and eyes are occupied.
 
 ## 5. Feedback on the tools
 
-### Pipecat
-
-**What's great:**
-- One-file agents are the right level of abstraction. The whole tutor — prompt, tools, lifecycle — fits in `bot-learn.py` and reads top-to-bottom.
-- `register_direct_function` + `FunctionCallParams.result_callback` is a clean pattern for tool calls. No glue code to remember.
-- `EndTaskFrame` + `FrameDirection.UPSTREAM` is the right way to end a call from inside a tool. Took ~30 seconds to find in the docs.
-- Pipecat Cloud deploy was three commands: `pc cloud secrets set`, `pc cloud deploy`, `pc cloud agent status`. Worked on the first try once we got the Dockerfile right.
-
-**Friction points:**
-- The Dockerfile is shared across agents in the same repo — you can't deploy `flower-bot` and `learn-bot` from the same commit because the `COPY ./bot-X.py bot.py` line conflicts. We took the "edit in-place, accept that flower-bot redeploys break" tradeoff. A `--build-arg` switch in the starter would help.
-- First-run VAD/turn-detection model download is ~20 s. Worth a banner in the playground UI so first-time users don't think it's broken.
-- The interaction between `system_instruction` and the auto-appended turn-completion framework (✓/○/◐) is non-obvious — we wasted ~15 min adding it to our prompt before realizing Pipecat appends it for us when `FilterIncompleteUserTurnStrategies` is on.
-- Tool-call docstrings leak into the model's view of *parameters* — we had a `run_llm` mention in `end_session`'s docstring and the LLM started passing `run_llm=True` as if it were an argument. Once we trimmed the docstring, it stopped. Worth calling out in the docs.
-
 ### Cekura
-
-**What worked:**
-- The MCP + skills setup via `/plugin install cekura@cekura-skills` was the fastest tool onboarding of the day. Slash commands meant we never left Claude Code.
-- `/cekura-report` against a Pipecat-typed agent is the right shape for a self-improvement loop: one command runs 10+ generated scenarios, you read the failure transcripts, edit the prompt, re-run. The whole iteration is ~5 minutes.
-- Mapping our 5 Pipecat tool events onto Cekura's observability model was intuitive — the data model "just fit."
 
 **What we'd improve — biggest ask:**
 - **Custom product metrics with trend views.** Cekura's eval metrics are great for "did the agent do the task," but Confucius cares about *product* metrics — concepts-per-session, time-to-understanding, marked-for-later rate. We can log these as custom fields, but there's no first-class way to **plot a single metric's trend over time across runs** so we can see if last night's prompt change actually moved the needle. The shape we want: "show me `concepts_per_session` p50 by day for the last week, broken down by agent version." Right now we'd have to export and graph this ourselves. A self-improvement loop is only as good as the dashboard you trust to tell you it's working — that's the gap.
