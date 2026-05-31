@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Confucius — Voice Tutor</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
+  <script src="https://unpkg.com/@daily-co/daily-js"></script>
+</head>
+<body>
+  <main>
+    <h1>Confucius</h1>
+    <p class="tagline">An interactive voice tutor for everyone. Anywhere, anytime your hands or eyes are busy.</p>
+
+    <section id="signin">
+      <p>Sign in to start a session. Confucius will remember you next time.</p>
+      <div id="g_id_onload"
+           data-client_id="REPLACE_WITH_GOOGLE_CLIENT_ID"
+           data-callback="onGoogleSignIn"
+           data-auto_prompt="false"></div>
+      <div class="g_id_signin" data-type="standard" data-size="large"></div>
+    </section>
+
+    <section id="ready" hidden>
+      <p>Hello, <span id="user-name"></span>. Ready when you are.</p>
+      <button id="start-btn">Start Learning</button>
+    </section>
+
+    <section id="call" hidden>
+      <div id="daily-frame"></div>
+      <button id="end-btn">End Session</button>
+    </section>
+
+    <footer><small>YC Voice Agents Hackathon · built with Pipecat · memory v2</small></footer>
+  </main>
+  <script src="app.js"></script>
+</body>
+</html>
