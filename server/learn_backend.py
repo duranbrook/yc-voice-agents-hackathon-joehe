@@ -272,6 +272,8 @@ def make_tools(session_id: str) -> list:
         if not state.sent_to_cekura:
             state.sent_to_cekura = True
             asyncio.create_task(cekura_client.send_session(state))
+            import supabase_client
+            asyncio.create_task(supabase_client.persist_session(state))
         logger.info(f"[learn] end_session for {session_id}")
         await params.llm.push_frame(EndTaskFrame(), FrameDirection.UPSTREAM)
         await params.result_callback(

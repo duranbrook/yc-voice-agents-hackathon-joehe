@@ -191,6 +191,9 @@ async def run_bot(
     from_number: str | None = None,
     audio_in_sample_rate: int = 16000,
     audio_out_sample_rate: int = 24000,
+    user_id: str | None = None,
+    user_email: str | None = None,
+    user_name: str | None = None,
 ):
     """Main bot logic.
 
@@ -199,8 +202,11 @@ async def run_bot(
         from_number: Caller's phone number (Twilio path only) for known-customer lookup.
         audio_in_sample_rate: Input audio sample rate in Hz. Defaults to 16000 (WebRTC).
         audio_out_sample_rate: Output audio sample rate in Hz. Defaults to 24000 (WebRTC).
+        user_id: Memory v2 — authenticated user identifier from runner_args.body. None for anon.
+        user_email: Memory v2 — user's email (for logs + future personalization). None for anon.
+        user_name: Memory v2 — user's display name. None for anon.
     """
-    logger.info("Starting bot")
+    logger.info(f"Starting bot (user_id={user_id or 'anonymous'})")
 
     # --- Tools the LLM can call ---------------------------------------------
 
@@ -208,7 +214,7 @@ async def run_bot(
     tool_functions = make_tools(session_id)
     # Ensure SessionState row exists from the start so recap_session works even
     # if the LLM hallucinates calling it pre-Phase-2.
-    get_or_create_session(session_id)
+    get_or_create_session(session_id, user_id=user_id or "default_user")
     tools = ToolsSchema(standard_tools=tool_functions)
 
     # --- System instruction (varies based on caller ID) ---------------------
@@ -286,6 +292,19 @@ async def run_bot(
         logger.info(f"[ctx] appended {len(_ctx_text)} chars from {_ctx_path}")
     else:
         logger.warning(f"[ctx] llm_context.md NOT FOUND at {_ctx_path} — running with base prompt only")
+
+    # Memory v2: load returning-user context and append memory block to prompt.
+    # Falls back to v1 behavior if supabase is not configured or user is anonymous.
+    if user_id and user_id != "default_user":
+        try:
+            import supabase_client
+            from learn_backend import build_memory_prompt_block
+            memory = await supabase_client.load_memory(user_id)
+            memory_block = build_memory_prompt_block(memory)
+            system_instruction = system_instruction + "\n\n" + memory_block
+            logger.info(f"[memory] loaded for user {user_id}: bucket={memory.get('recency_bucket')}")
+        except Exception as e:
+            logger.warning(f"[memory] load failed for {user_id}: {e!r} — proceeding with v1 prompt")
 
     # Speech-to-Text service
     stt = GradiumSTTService(
@@ -372,6 +391,7 @@ async def run_bot(
     async def on_client_disconnected(transport, client):
         import asyncio
         import cekura_client
+        import supabase_client
         state = get_or_create_session(session_id)
         if not state.sent_to_cekura:
             state.sent_to_cekura = True
@@ -380,6 +400,7 @@ async def run_bot(
             if state.concepts_covered and state.concepts_covered[-1].ended_at is None:
                 state.concepts_covered[-1].ended_at = state.ended_at
             asyncio.create_task(cekura_client.send_session(state))
+            asyncio.create_task(supabase_client.persist_session(state))
         logger.info("Client disconnected")
         await worker.cancel()
 
@@ -394,6 +415,20 @@ async def bot(runner_args: RunnerArguments):
 
     from_number: str | None = None
     transport_overrides: dict = {}
+
+    # Memory v2: extract authenticated user from session-mint request body.
+    # The custom client (client/index.html) POSTs to Pipecat Cloud's
+    # /v1/public/learn-bot/start with {data: {user_id, email, name}}. Pipecat
+    # surfaces that as runner_args.body. For anonymous (sandbox) sessions
+    # body is empty/missing and user_id stays None — bot behaves as v1.
+    user_id: str | None = None
+    user_email: str | None = None
+    user_name: str | None = None
+    body = getattr(runner_args, "body", None)
+    if isinstance(body, dict):
+        user_id = body.get("user_id")
+        user_email = body.get("email")
+        user_name = body.get("name")
 
     # Krisp is available when deployed to Pipecat Cloud
     if os.environ.get("ENV") != "local":
@@ -464,7 +499,14 @@ async def bot(runner_args: RunnerArguments):
             logger.error(f"Unsupported runner arguments type: {type(runner_args)}")
             return
 
-    await run_bot(transport, from_number=from_number, **transport_overrides)
+    await run_bot(
+        transport,
+        from_number=from_number,
+        user_id=user_id,
+        user_email=user_email,
+        user_name=user_name,
+        **transport_overrides,
+    )
 
 
 if __name__ == "__main__":
