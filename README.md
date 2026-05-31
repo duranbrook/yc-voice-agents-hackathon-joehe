@@ -55,7 +55,7 @@ A learn-on-the-go tutor for the moments your hands and eyes are occupied.
 
 ## 6. Live link
 
-The deployed `learn-bot` runs on Pipecat Cloud. To try it, follow the local-run steps in [`docs/STARTER.md`](docs/STARTER.md) (substitute `bot-learn.py` for `bot-gpt.py`) — best with earbuds + iOS Safari. Tap **Connect**, grant mic, ask anything. ~8-minute sessions are the default.
+https://pipecat.daily.co/0530id/agents/learn-bot/sandbox
 
 ---
 
